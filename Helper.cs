@@ -85,5 +85,23 @@ namespace GitHubImporter {
             });
             return issueEvent;
         }
+
+        public static Comment CreateComment(Issue issue, IssueComment ghComment) {
+            Console.WriteLine("CreateComment " + ghComment.Id);
+            Comment comment = null;
+            Db.Transact(() => {
+                comment = new Comment {
+                    Issue = issue,
+                    Author = GetOrCreateUser(ghComment.User.Login, ghComment.User.Url.ToString(), ghComment.User.AvatarUrl.ToString()),
+                    Body = ghComment.Body,
+                    CreatedAt = ghComment.CreatedAt.UtcDateTime
+                };
+                var updatedAt = ghComment.UpdatedAt;
+                if (updatedAt.HasValue) {
+                    comment.UpdatedAt = updatedAt.Value.UtcDateTime;
+                }
+            });
+            return comment;
+        }
     }
 }

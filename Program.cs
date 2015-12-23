@@ -114,7 +114,7 @@ namespace GitHubImporter {
                     var issue = FindOutdatedIssueEvents(repository);
 
                     if (issue != null) {
-                        Console.WriteLine("Found outdated issue" + issue.ExternalId);
+                        Console.WriteLine("Found outdated issue events " + issue.ExternalId);
                         string ownerName = issue.Repository.Owner.Name;
                         string repositoryName = issue.Repository.Name;
                         int number = issue.ExternalId;
@@ -145,6 +145,42 @@ namespace GitHubImporter {
                         });
 
                     }
+                    else {
+                        issue = FindOutdatedIssueComments(repository);
+
+                        if (issue != null) {
+
+                            Console.WriteLine("Found outdated issue comments " + issue.ExternalId);
+                            string ownerName = issue.Repository.Owner.Name;
+                            string repositoryName = issue.Repository.Name;
+                            int number = issue.ExternalId;
+                            DateTime requestTime = DateTime.UtcNow;
+
+                            Task.Run(async () => {
+                                var ghComments = await GetComments(ownerName, repositoryName, number);
+
+
+                                new DbSession().RunSync(() => {
+                                    StarcounterEnvironment.RunWithinApplication(appName, () => {
+                                        if (ghComments != null) {
+                                            Console.WriteLine("Got comments for #" + issue.ExternalId + " : " + ghComments.Count);
+                                            foreach (var ghComment in ghComments) {
+                                                Helper.CreateComment(issue, ghComment);
+                                            }
+                                            Db.Transact(() => {
+                                                issue.CommentsCheckedAt = requestTime;
+                                            });
+                                        }
+                                        schedulerId = StarcounterEnvironment.CurrentSchedulerId;
+                                        Task.Run(async () => {
+                                            await UpdateNextIssueInfo(repository, schedulerId);
+                                        });
+                                    });
+                                }, schedulerId);
+
+                            });
+                        }
+                    }
                 });
             }, schedulerId);
             return true;
@@ -152,20 +188,28 @@ namespace GitHubImporter {
 
         static async Task<IReadOnlyList<Octokit.EventInfo>> GetEventInfos(string ownerName, string repositoryName, int number) {
             IReadOnlyList<Octokit.EventInfo> ghEvents = null;
-
-
             try {
-                //ghEvents = await github.Issue.Events.GetAllForIssue(issue.Repository.Owner.Name, issue.Repository.Name, issue.ExternalId);
                 ghEvents = await github.Issue.Events.GetAllForIssue(ownerName, repositoryName, number);
-                //ghEvents = await github.Issue.Events.GetAllForIssue("Starcounter", "Starcounter", 1);
             }
-
             catch (Exception ex) {
                 StarcounterEnvironment.RunWithinApplication(appName, () => {
                     Console.WriteLine("Exception caught: " + ex);
                 });
             }
             return ghEvents;
+        }
+
+        static async Task<IReadOnlyList<Octokit.IssueComment>> GetComments(string ownerName, string repositoryName, int number) {
+            IReadOnlyList<Octokit.IssueComment> ghComments = null;
+            try {
+                ghComments = await github.Issue.Comment.GetAllForIssue(ownerName, repositoryName, number);
+            }
+            catch (Exception ex) {
+                StarcounterEnvironment.RunWithinApplication(appName, () => {
+                    Console.WriteLine("Exception caught: " + ex);
+                });
+            }
+            return ghComments;
         }
 
         static async Task<IReadOnlyList<Octokit.Issue>> GetIssues(Repository repository) {
@@ -199,6 +243,19 @@ namespace GitHubImporter {
             var issue = Db.SQL<Issue>("SELECT i FROM Issue i WHERE i.Repository = ? ORDER BY i.EventsCheckedAt ASC FETCH ?", repository, 1).First;
 
             var diffInMinutes = (DateTime.UtcNow - issue.EventsCheckedAt).TotalMinutes;
+
+            if (diffInMinutes > 1) {
+                return issue;
+            }
+            else {
+                return null;
+            }
+        }
+
+        static Issue FindOutdatedIssueComments(Repository repository) {
+            var issue = Db.SQL<Issue>("SELECT i FROM Issue i WHERE i.Repository = ? ORDER BY i.CommentsCheckedAt ASC FETCH ?", repository, 1).First;
+
+            var diffInMinutes = (DateTime.UtcNow - issue.CommentsCheckedAt).TotalMinutes;
 
             if (diffInMinutes > 1) {
                 return issue;

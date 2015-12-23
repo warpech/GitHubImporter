@@ -16,6 +16,7 @@ namespace GitHubImporter {
         public DateTime ClosedAt;
         public DateTime UpdatedAt;
         public DateTime EventsCheckedAt;
+        public DateTime CommentsCheckedAt;
 
         public QueryResultRows<Comment> Comments {
             get {
