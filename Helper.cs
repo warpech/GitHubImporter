@@ -1,14 +1,17 @@
 ﻿using Octokit;
 using Starcounter;
+using System;
 
 namespace GitHubImporter {
     public class Helper {
-        public static User GetOrCreateUser(string name) {
+        public static User GetOrCreateUser(string name, string url, string avatarUrl) {
             User user = Db.SQL<User>("SELECT u FROM GitHubImporter.User u WHERE u.Name = ?", name).First;
             if (user == null) {
                 Db.Transact(() => {
                     user = new User {
-                        Name = name
+                        Name = name,
+                        Url = url,
+                        AvatarUrl = avatarUrl
                     };
                 });
             }
@@ -29,6 +32,7 @@ namespace GitHubImporter {
         }
 
         public static Issue GetOrCreateIssue(Repository repository, int externalId) {
+            Console.WriteLine("GetOrCreateIssue " + externalId);
             Issue issue = Db.SQL<Issue>("SELECT i FROM GitHubImporter.Issue i WHERE i.Repository = ? AND i.ExternalId = ?", repository, externalId).First;
             if (issue == null) {
                 Db.Transact(() => {
@@ -41,15 +45,41 @@ namespace GitHubImporter {
             return issue;
         }
 
-        public static IssueEvent CreateIssueEvent(Issue issue, EventInfo eventInfo) {
-            IssueEvent issueEvent = null;
+        public static Label GetOrCreateLabel(Repository repository, string name, string color, string url) {
+            Label label = Db.SQL<Label>("SELECT o FROM GitHubImporter.Label o WHERE o.Repository = ? AND o.Name = ?", repository, name).First;
+            if (label == null) {
                 Db.Transact(() => {
-                    issueEvent = new IssueEvent {
-                        Issue = issue,
-                        ExternalId = eventInfo.Id
+                    label = new Label {
+                        Name = name,
+                        Color = color,
+                        Url = url
                     };
-                    //eventInfo.Label
                 });
+            }
+            return label;
+        }
+
+        public static IssueEvent CreateIssueEvent(Issue issue, EventInfo eventInfo) {
+            Console.WriteLine("CreateIssueEvent " + eventInfo.Event.ToString());
+            IssueEvent issueEvent = null;
+            IssueEventType type = Db.SQL<IssueEventType>("SELECT t FROM IssueEventType t WHERE t.Name = ?", eventInfo.Event.ToString()).First;
+            if (type == null) {
+                throw new Exception("Event type not recognised: " + eventInfo.Event.ToString());
+            }
+            Db.Transact(() => {
+                issueEvent = new IssueEvent {
+                    Issue = issue,
+                    ExternalId = eventInfo.Id,
+                    Type = type,
+                    Actor = GetOrCreateUser(eventInfo.Actor.Login, eventInfo.Actor.Url.ToString(), eventInfo.Actor.AvatarUrl.ToString())
+                };
+                if (eventInfo.Assignee != null) {
+                    issueEvent.Assignee = GetOrCreateUser(eventInfo.Actor.Login, eventInfo.Actor.Url.ToString(), eventInfo.Actor.AvatarUrl.ToString());
+                }
+                if (eventInfo.Label != null) {
+                    issueEvent.Label = GetOrCreateLabel(issue.Repository, eventInfo.Label.Name, eventInfo.Label.Color, eventInfo.Label.Url.ToString());
+                }
+            });
             return issueEvent;
         }
     }

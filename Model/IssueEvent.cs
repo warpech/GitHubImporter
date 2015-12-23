@@ -7,7 +7,10 @@ namespace GitHubImporter {
     public class IssueEvent {
         public Issue Issue;
         public int ExternalId;
-        //public EventType
-        //public EventInfo EventInfo;
+        public IssueEventType Type;
+        public User Actor;
+        public User Assignee;
+        public Label Label;
+        public string CommitId;
     }
 }

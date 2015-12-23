@@ -10,7 +10,7 @@ namespace GitHubImporter {
 
         static GitHubClient github;
 
-        
+
         static string appName = StarcounterEnvironment.AppName;
 
         static void Main() {
@@ -20,10 +20,65 @@ namespace GitHubImporter {
                 Db.SlowSQL("DELETE FROM GitHubImporter.Comment");
                 Db.SlowSQL("DELETE FROM GitHubImporter.Issue");
                 Db.SlowSQL("DELETE FROM GitHubImporter.IssueEvent");
+                Db.SlowSQL("DELETE FROM GitHubImporter.IssueEventType");
                 Db.SlowSQL("DELETE FROM GitHubImporter.Label");
                 Db.SlowSQL("DELETE FROM GitHubImporter.Repository");
                 Db.SlowSQL("DELETE FROM GitHubImporter.User");
 
+                new IssueEventType() {
+                    Name = "Closed"
+                };
+                new IssueEventType() {
+                    Name = "Reopened"
+                };
+                new IssueEventType() {
+                    Name = "Subscribed"
+                };
+                new IssueEventType() {
+                    Name = "Merged"
+                };
+                new IssueEventType() {
+                    Name = "Referenced"
+                };
+                new IssueEventType() {
+                    Name = "Mentioned"
+                };
+                new IssueEventType() {
+                    Name = "Assigned"
+                };
+                new IssueEventType() {
+                    Name = "Unassigned"
+                };
+                new IssueEventType() {
+                    Name = "Labeled"
+                };
+                new IssueEventType() {
+                    Name = "Unlabeled"
+                };
+                new IssueEventType() {
+                    Name = "Milestoned"
+                };
+                new IssueEventType() {
+                    Name = "Demilestoned"
+                };
+                new IssueEventType() {
+                    Name = "Renamed"
+                };
+                new IssueEventType() {
+                    Name = "Locked"
+                };
+                new IssueEventType() {
+                    Name = "Unlocked"
+                };
+                new IssueEventType() {
+                    Name = "HeadRefDeleted"
+                };
+                new IssueEventType() {
+                    Name = "HeadRefRestored"
+                };
+                new IssueEventType() {
+                    Name = "Unsubscribed"
+                };
             });
 
             Console.WriteLine("Connecting to GH...");
@@ -32,11 +87,10 @@ namespace GitHubImporter {
             github.Credentials = tokenAuth;
 
             LoadStartData();
-
         }
 
         static async void LoadStartData() {
-            User user = Helper.GetOrCreateUser("Starcounter");
+            User user = Helper.GetOrCreateUser("Starcounter", null, null);
             Repository repository = Helper.GetOrCreateRepository(user, "Replicator");
 
             byte schedulerId = StarcounterEnvironment.CurrentSchedulerId;
@@ -44,31 +98,56 @@ namespace GitHubImporter {
             new DbSession().RunSync(() => {
                 StarcounterEnvironment.RunWithinApplication(appName, () => {
                     SaveIssues(repository, ghIssues);
+                    schedulerId = StarcounterEnvironment.CurrentSchedulerId;
+                    Task.Run(async () => {
+                        await UpdateNextIssueInfo(repository, schedulerId);
+                    });
 
-                    var issue = FindOutdatedIssue(repository);
+                });
+            }, schedulerId);
+        }
+
+        static async Task<bool> UpdateNextIssueInfo(Repository repository, byte schedulerId) {
+            new DbSession().RunSync(() => {
+                StarcounterEnvironment.RunWithinApplication(appName, () => {
+
+                    var issue = FindOutdatedIssueEvents(repository);
+
                     if (issue != null) {
-                        schedulerId = StarcounterEnvironment.CurrentSchedulerId;
+                        Console.WriteLine("Found outdated issue" + issue.ExternalId);
                         string ownerName = issue.Repository.Owner.Name;
                         string repositoryName = issue.Repository.Name;
                         int number = issue.ExternalId;
+                        DateTime requestTime = DateTime.UtcNow;
+
                         Task.Run(async () => {
                             var ghEvents = await GetEventInfos(ownerName, repositoryName, number);
 
-                            if (ghEvents != null) {
-                                new DbSession().RunSync(() => {
-                                    StarcounterEnvironment.RunWithinApplication(appName, () => {
+
+                            new DbSession().RunSync(() => {
+                                StarcounterEnvironment.RunWithinApplication(appName, () => {
+                                    if (ghEvents != null) {
                                         Console.WriteLine("Got event info for #" + issue.ExternalId + " : " + ghEvents.Count);
                                         foreach (var ghEvent in ghEvents) {
                                             Helper.CreateIssueEvent(issue, ghEvent);
                                         }
+                                        Db.Transact(() => {
+                                            issue.EventsCheckedAt = requestTime;
+                                        });
+                                    }
+                                    schedulerId = StarcounterEnvironment.CurrentSchedulerId;
+                                    Task.Run(async () => {
+                                        await UpdateNextIssueInfo(repository, schedulerId);
                                     });
-                                }, schedulerId);
-                            }
-                        });
-                    }
+                                });
+                            }, schedulerId);
 
+                        });
+
+                    }
                 });
             }, schedulerId);
+            return true;
         }
 
         static async Task<IReadOnlyList<Octokit.EventInfo>> GetEventInfos(string ownerName, string repositoryName, int number) {
@@ -82,9 +161,9 @@ namespace GitHubImporter {
             }
 
             catch (Exception ex) {
-                    StarcounterEnvironment.RunWithinApplication(appName, () => {
-                        Console.WriteLine("Exception caught: " + ex);
-                    });
+                StarcounterEnvironment.RunWithinApplication(appName, () => {
+                    Console.WriteLine("Exception caught: " + ex);
+                });
             }
             return ghEvents;
         }
@@ -116,9 +195,17 @@ namespace GitHubImporter {
             }
         }
 
-        static Issue FindOutdatedIssue(Repository repository) {
-            var issue = Db.SQL<Issue>("SELECT i FROM Issue i WHERE i.Repository = ? ORDER BY i.CheckedAt ASC FETCH ?", repository, 1).First;
-            return issue;
+        static Issue FindOutdatedIssueEvents(Repository repository) {
+            var issue = Db.SQL<Issue>("SELECT i FROM Issue i WHERE i.Repository = ? ORDER BY i.EventsCheckedAt ASC FETCH ?", repository, 1).First;
+
+            var diffInMinutes = (DateTime.UtcNow - issue.EventsCheckedAt).TotalMinutes;
+
+            if (diffInMinutes > 1) {
+                return issue;
+            }
+            else {
+                return null;
+            }
         }
     }
 }
