@@ -66,7 +66,9 @@
     <Reference Include="System.Net.Http" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Helper.cs" />
     <Compile Include="Model\Comment.cs" />
+    <Compile Include="Model\IssueEvent.cs" />
     <Compile Include="Model\Label.cs" />
     <Compile Include="Model\User.cs" />
     <Compile Include="Model\Issue.cs" />
