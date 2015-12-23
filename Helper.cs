@@ -79,6 +79,9 @@ namespace GitHubImporter {
                 if (eventInfo.Label != null) {
                     issueEvent.Label = GetOrCreateLabel(issue.Repository, eventInfo.Label.Name, eventInfo.Label.Color, eventInfo.Label.Url.ToString());
                 }
+                if (eventInfo.CommitId != null) {
+                    issueEvent.CommitId = eventInfo.CommitId;
+                }
             });
             return issueEvent;
         }
