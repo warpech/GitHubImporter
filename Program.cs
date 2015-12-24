@@ -4,8 +4,14 @@ using Octokit;
 using Starcounter.Internal;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace GitHubImporter {
+    public class ReportInformation {
+        public string Name;
+        public Int64 Count;
+    }
+
     class Program {
 
         static GitHubClient github;
@@ -16,6 +22,35 @@ namespace GitHubImporter {
         static void Main() {
             Console.WriteLine("Starting...");
 
+            Handle.GET("/githubimporter", () => {
+                var master = new Master() {
+                    Data = Db.SQL<Repository>("SELECT r FROM Repository r").First
+                };
+
+                var report = new Report() { };
+                report.Title = "Most active commenters";
+
+                var users = Db.SQL<User>("SELECT u FROM User u");
+                List<ReportInformation> list = new List<ReportInformation>();
+                foreach(var user in users) {
+                    var item = new ReportInformation();
+                    item.Name = user.Name;
+                    item.Count = Db.SQL<Int64>("SELECT COUNT(c) FROM Comment c WHERE c.Author = ?", user).First;
+                    list.Add(item);
+                }
+
+                report.Items.Data = list.OrderByDescending(x => x.Count);
+
+                master.Report = report;
+
+                return master;
+            });
+            
+
+            //LoadStartData();
+        }
+
+        static async void LoadStartData() {
             Db.Transact(() => {
                 Db.SlowSQL("DELETE FROM GitHubImporter.Comment");
                 Db.SlowSQL("DELETE FROM GitHubImporter.Issue");
@@ -86,10 +121,7 @@ namespace GitHubImporter {
             github = new GitHubClient(new ProductHeaderValue("GitHubImporter"));
             github.Credentials = tokenAuth;
 
-            LoadStartData();
-        }
 
-        static async void LoadStartData() {
             User user = Helper.GetOrCreateUser("Starcounter", null, null);
             Repository repository = Helper.GetOrCreateRepository(user, "Replicator");
 
@@ -244,7 +276,7 @@ namespace GitHubImporter {
 
             var diffInMinutes = (DateTime.UtcNow - issue.EventsCheckedAt).TotalMinutes;
 
-            if (diffInMinutes > 1) {
+            if (diffInMinutes > 60) {
                 return issue;
             }
             else {
@@ -257,7 +289,7 @@ namespace GitHubImporter {
 
             var diffInMinutes = (DateTime.UtcNow - issue.CommentsCheckedAt).TotalMinutes;
 
-            if (diffInMinutes > 1) {
+            if (diffInMinutes > 60) {
                 return issue;
             }
             else {

@@ -1,0 +1,9 @@
+﻿<template>
+    <template is="dom-bind">
+        <h1><span>{{model.Owner.Name}}</span>/<span>{{model.Name}}</span></h1>
+
+        <starcounter-include partial="{{model.Report}}"></starcounter-include>
+
+        <dom-bind-notifier path="model" observed-object="{{model}}" deep></dom-bind-notifier>
+    </template>
+</template>

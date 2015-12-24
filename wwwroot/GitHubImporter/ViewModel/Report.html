@@ -1,0 +1,11 @@
+﻿<template>
+    <template is="dom-bind">
+        <h2>{{model.Title}}</h2>
+
+        <template is="dom-repeat" items="{{model.Items}}">
+            <div><span>{{item.Name}}</span> (<span>{{item.Count}}</span>)</div>
+        </template>
+
+        <dom-bind-notifier path="model" observed-object="{{model}}" deep></dom-bind-notifier>
+    </template>
+</template>
