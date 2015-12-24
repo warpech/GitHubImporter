@@ -9,6 +9,8 @@ using System.Linq;
 namespace GitHubImporter {
     public class ReportInformation {
         public string Name;
+        public string Url;
+        public string AvatarUrl;
         public Int64 Count;
     }
 
@@ -33,10 +35,15 @@ namespace GitHubImporter {
                 var users = Db.SQL<User>("SELECT u FROM User u");
                 List<ReportInformation> list = new List<ReportInformation>();
                 foreach (var user in users) {
-                    var item = new ReportInformation();
-                    item.Name = user.Name;
-                    item.Count = Db.SQL<Int64>("SELECT COUNT(c) FROM Comment c WHERE c.Author = ?", user).First;
-                    list.Add(item);
+                    var count = Db.SQL<Int64>("SELECT COUNT(c) FROM Comment c WHERE c.Author = ?", user).First;
+                    if (count > 0) {
+                        var item = new ReportInformation();
+                        item.Name = user.Name;
+                        item.Url = user.Url;
+                        item.AvatarUrl = user.AvatarUrl;
+                        item.Count = count;
+                        list.Add(item);
+                    }
                 }
 
                 report.Items.Data = list.OrderByDescending(x => x.Count);

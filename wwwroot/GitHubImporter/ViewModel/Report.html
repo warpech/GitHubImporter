@@ -1,11 +1,36 @@
-﻿<template>
+﻿<link rel="stylesheet" href="/GitHubImporter/style.css">
+
+<template>
     <template is="dom-bind">
         <h2>{{model.Title}}</h2>
 
         <template is="dom-repeat" items="{{model.Items}}">
-            <div><span>{{item.Name}}</span> (<span>{{item.Count}}</span>)</div>
+            <template is="dom-if" if="{{isFirst(index)}}">
+                <div><img class="githubimporter__avatar--big" src="{{item.AvatarUrl}}" /><a href="{{item.Url}}">{{item.Name}}</a> (<span>{{item.Count}}</span>)</div>
+            </template>
+            <template is="dom-if" if="{{isPodium(index)}}">
+                <div><img class="githubimporter__avatar" src="{{item.AvatarUrl}}" /><a href="{{item.Url}}">{{item.Name}}</a> (<span>{{item.Count}}</span>)</div>
+            </template>
+            <template is="dom-if" if="{{isOther(index)}}">
+                <div><a href="{{item.Url}}">{{item.Name}}</a> (<span>{{item.Count}}</span>)</div>
+            </template>
         </template>
 
         <dom-bind-notifier path="model" observed-object="{{model}}" deep></dom-bind-notifier>
     </template>
+    <script>
+        (function () {
+            var script = document._currentScript || document.currentScript;
+            var template = script.previousElementSibling;
+            template.isFirst = function (index) {
+                return (index == 0);
+            };
+            template.isPodium = function (index) {
+                return (index > 0 && index <= 2);
+            };
+            template.isOther = function (index) {
+                return (index > 2);
+            };
+        })();
+    </script>
 </template>

@@ -4,7 +4,9 @@
     "Items": [
         {
             "Name": "",
-            "Count": 0
+            "Count": 0,
+            "Url": "",
+            "AvatarUrl": ""
         }
     ]
 }
