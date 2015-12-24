@@ -5,6 +5,7 @@ namespace GitHubImporter {
     [Database]
     public class Comment {
         public Issue Issue;
+        public int ExternalId;
         public User Author;
         public string Body;
 

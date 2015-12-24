@@ -32,7 +32,7 @@ namespace GitHubImporter {
 
                 var users = Db.SQL<User>("SELECT u FROM User u");
                 List<ReportInformation> list = new List<ReportInformation>();
-                foreach(var user in users) {
+                foreach (var user in users) {
                     var item = new ReportInformation();
                     item.Name = user.Name;
                     item.Count = Db.SQL<Int64>("SELECT COUNT(c) FROM Comment c WHERE c.Author = ?", user).First;
@@ -45,20 +45,20 @@ namespace GitHubImporter {
 
                 return master;
             });
-            
 
-            //LoadStartData();
+
+            LoadStartData();
         }
 
         static async void LoadStartData() {
             Db.Transact(() => {
-                Db.SlowSQL("DELETE FROM GitHubImporter.Comment");
+                /*Db.SlowSQL("DELETE FROM GitHubImporter.Comment");
                 Db.SlowSQL("DELETE FROM GitHubImporter.Issue");
                 Db.SlowSQL("DELETE FROM GitHubImporter.IssueEvent");
                 Db.SlowSQL("DELETE FROM GitHubImporter.IssueEventType");
                 Db.SlowSQL("DELETE FROM GitHubImporter.Label");
                 Db.SlowSQL("DELETE FROM GitHubImporter.Repository");
-                Db.SlowSQL("DELETE FROM GitHubImporter.User");
+                Db.SlowSQL("DELETE FROM GitHubImporter.User");*/
 
                 new IssueEventType() {
                     Name = "Closed"
@@ -123,13 +123,13 @@ namespace GitHubImporter {
 
 
             User user = Helper.GetOrCreateUser("Starcounter", null, null);
-            Repository repository = Helper.GetOrCreateRepository(user, "Replicator");
+            Repository repository = Helper.GetOrCreateRepository(user, "Starcounter");
 
             byte schedulerId = StarcounterEnvironment.CurrentSchedulerId;
-            var ghIssues = await GetIssues(repository);
+            //var ghIssues = await GetIssues(repository);
             new DbSession().RunSync(() => {
                 StarcounterEnvironment.RunWithinApplication(appName, () => {
-                    SaveIssues(repository, ghIssues);
+                    //SaveIssues(repository, ghIssues);
                     schedulerId = StarcounterEnvironment.CurrentSchedulerId;
                     Task.Run(async () => {
                         await UpdateNextIssueInfo(repository, schedulerId);
@@ -160,17 +160,17 @@ namespace GitHubImporter {
                                 StarcounterEnvironment.RunWithinApplication(appName, () => {
                                     if (ghEvents != null) {
                                         Console.WriteLine("Got event info for #" + issue.ExternalId + " : " + ghEvents.Count);
-                                        foreach (var ghEvent in ghEvents) {
-                                            Helper.CreateIssueEvent(issue, ghEvent);
-                                        }
                                         Db.Transact(() => {
+                                            foreach (var ghEvent in ghEvents) {
+                                                Helper.CreateIssueEvent(issue, ghEvent);
+                                            }
                                             issue.EventsCheckedAt = requestTime;
                                         });
+                                        schedulerId = StarcounterEnvironment.CurrentSchedulerId;
+                                        Task.Run(async () => {
+                                            await UpdateNextIssueInfo(repository, schedulerId);
+                                        });
                                     }
-                                    schedulerId = StarcounterEnvironment.CurrentSchedulerId;
-                                    Task.Run(async () => {
-                                        await UpdateNextIssueInfo(repository, schedulerId);
-                                    });
                                 });
                             }, schedulerId);
 
@@ -191,22 +191,21 @@ namespace GitHubImporter {
                             Task.Run(async () => {
                                 var ghComments = await GetComments(ownerName, repositoryName, number);
 
-
                                 new DbSession().RunSync(() => {
                                     StarcounterEnvironment.RunWithinApplication(appName, () => {
                                         if (ghComments != null) {
                                             Console.WriteLine("Got comments for #" + issue.ExternalId + " : " + ghComments.Count);
-                                            foreach (var ghComment in ghComments) {
-                                                Helper.CreateComment(issue, ghComment);
-                                            }
                                             Db.Transact(() => {
+                                                foreach (var ghComment in ghComments) {
+                                                    Helper.CreateComment(issue, ghComment);
+                                                }
                                                 issue.CommentsCheckedAt = requestTime;
                                             });
+                                            schedulerId = StarcounterEnvironment.CurrentSchedulerId;
+                                            Task.Run(async () => {
+                                                await UpdateNextIssueInfo(repository, schedulerId);
+                                            });
                                         }
-                                        schedulerId = StarcounterEnvironment.CurrentSchedulerId;
-                                        Task.Run(async () => {
-                                            await UpdateNextIssueInfo(repository, schedulerId);
-                                        });
                                     });
                                 }, schedulerId);
 
@@ -274,9 +273,9 @@ namespace GitHubImporter {
         static Issue FindOutdatedIssueEvents(Repository repository) {
             var issue = Db.SQL<Issue>("SELECT i FROM Issue i WHERE i.Repository = ? ORDER BY i.EventsCheckedAt ASC FETCH ?", repository, 1).First;
 
-            var diffInMinutes = (DateTime.UtcNow - issue.EventsCheckedAt).TotalMinutes;
+            var diffInDays = (DateTime.UtcNow - issue.EventsCheckedAt).TotalDays;
 
-            if (diffInMinutes > 60) {
+            if (diffInDays > 5) {
                 return issue;
             }
             else {
@@ -287,9 +286,9 @@ namespace GitHubImporter {
         static Issue FindOutdatedIssueComments(Repository repository) {
             var issue = Db.SQL<Issue>("SELECT i FROM Issue i WHERE i.Repository = ? ORDER BY i.CommentsCheckedAt ASC FETCH ?", repository, 1).First;
 
-            var diffInMinutes = (DateTime.UtcNow - issue.CommentsCheckedAt).TotalMinutes;
+            var diffInDays = (DateTime.UtcNow - issue.CommentsCheckedAt).TotalDays;
 
-            if (diffInMinutes > 60) {
+            if (diffInDays > 5) {
                 return issue;
             }
             else {
@@ -298,3 +297,9 @@ namespace GitHubImporter {
         }
     }
 }
+
+
+
+//TODO add job queue (event/comment info)
+//add progress bar
+//add current status

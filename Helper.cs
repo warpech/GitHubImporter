@@ -32,7 +32,7 @@ namespace GitHubImporter {
         }
 
         public static Issue GetOrCreateIssue(Repository repository, int externalId) {
-            Console.WriteLine("GetOrCreateIssue " + externalId);
+            //Console.WriteLine("GetOrCreateIssue " + externalId);
             Issue issue = Db.SQL<Issue>("SELECT i FROM GitHubImporter.Issue i WHERE i.Repository = ? AND i.ExternalId = ?", repository, externalId).First;
             if (issue == null) {
                 Db.Transact(() => {
@@ -45,14 +45,14 @@ namespace GitHubImporter {
             return issue;
         }
 
-        public static Label GetOrCreateLabel(Repository repository, string name, string color, string url) {
+        public static Label GetOrCreateLabel(Repository repository, string name, string color) {
             Label label = Db.SQL<Label>("SELECT o FROM GitHubImporter.Label o WHERE o.Repository = ? AND o.Name = ?", repository, name).First;
             if (label == null) {
                 Db.Transact(() => {
                     label = new Label {
+                        Repository = repository,
                         Name = name,
-                        Color = color,
-                        Url = url
+                        Color = color
                     };
                 });
             }
@@ -60,38 +60,41 @@ namespace GitHubImporter {
         }
 
         public static IssueEvent CreateIssueEvent(Issue issue, EventInfo eventInfo) {
-            Console.WriteLine("CreateIssueEvent " + eventInfo.Event.ToString());
-            IssueEvent issueEvent = null;
-            IssueEventType type = Db.SQL<IssueEventType>("SELECT t FROM IssueEventType t WHERE t.Name = ?", eventInfo.Event.ToString()).First;
-            if (type == null) {
-                throw new Exception("Event type not recognised: " + eventInfo.Event.ToString());
-            }
-            Db.Transact(() => {
+            //Console.WriteLine("CreateIssueEvent " + eventInfo.Event.ToString());
+            IssueEvent issueEvent = Db.SQL<IssueEvent>("SELECT e FROM IssueEvent e WHERE e.ExternalId = ?", eventInfo.Id).First;
+            if (issueEvent == null) {
+                IssueEventType type = Db.SQL<IssueEventType>("SELECT t FROM IssueEventType t WHERE t.Name = ?", eventInfo.Event.ToString()).First;
+                if (type == null) {
+                    throw new Exception("Event type not recognised: " + eventInfo.Event.ToString());
+                }
                 issueEvent = new IssueEvent {
                     Issue = issue,
                     ExternalId = eventInfo.Id,
-                    Type = type,
-                    Actor = GetOrCreateUser(eventInfo.Actor.Login, eventInfo.Actor.Url.ToString(), eventInfo.Actor.AvatarUrl.ToString())
+                    Type = type
                 };
+                if (eventInfo.Actor != null) {
+                    issueEvent.Actor = GetOrCreateUser(eventInfo.Actor.Login, eventInfo.Actor.Url.ToString(), eventInfo.Actor.AvatarUrl.ToString());
+                }
                 if (eventInfo.Assignee != null) {
                     issueEvent.Assignee = GetOrCreateUser(eventInfo.Actor.Login, eventInfo.Actor.Url.ToString(), eventInfo.Actor.AvatarUrl.ToString());
                 }
                 if (eventInfo.Label != null) {
-                    issueEvent.Label = GetOrCreateLabel(issue.Repository, eventInfo.Label.Name, eventInfo.Label.Color, eventInfo.Label.Url.ToString());
+                    issueEvent.Label = GetOrCreateLabel(issue.Repository, eventInfo.Label.Name, eventInfo.Label.Color);
                 }
                 if (eventInfo.CommitId != null) {
                     issueEvent.CommitId = eventInfo.CommitId;
                 }
-            });
+            }
             return issueEvent;
         }
 
         public static Comment CreateComment(Issue issue, IssueComment ghComment) {
-            Console.WriteLine("CreateComment " + ghComment.Id);
-            Comment comment = null;
-            Db.Transact(() => {
+            //Console.WriteLine("CreateComment " + ghComment.Id);
+            Comment comment = Db.SQL<Comment>("SELECT c FROM Comment c WHERE c.ExternalId = ?", ghComment.Id).First;
+            if (comment == null) {
                 comment = new Comment {
                     Issue = issue,
+                    ExternalId = ghComment.Id,
                     Author = GetOrCreateUser(ghComment.User.Login, ghComment.User.Url.ToString(), ghComment.User.AvatarUrl.ToString()),
                     Body = ghComment.Body,
                     CreatedAt = ghComment.CreatedAt.UtcDateTime
@@ -100,7 +103,7 @@ namespace GitHubImporter {
                 if (updatedAt.HasValue) {
                     comment.UpdatedAt = updatedAt.Value.UtcDateTime;
                 }
-            });
+            }
             return comment;
         }
     }
