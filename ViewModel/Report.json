@@ -1,6 +1,13 @@
 {
     "Html": "/GitHubImporter/ViewModel/Report.html",
     "Title": "",
+    "Setup": {
+        "Status": {
+            "Open$": false,
+            "Closed$": false,
+            "All$": true
+        }
+    },
     "Items": [
         {
             "Name": "",

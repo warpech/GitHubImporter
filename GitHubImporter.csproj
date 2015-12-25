@@ -70,6 +70,7 @@
     <Compile Include="Model\Comment.cs" />
     <Compile Include="Model\IssueEvent.cs" />
     <Compile Include="Model\IssueEventType.cs" />
+    <Compile Include="Model\IssueStatus.cs" />
     <Compile Include="Model\Label.cs" />
     <Compile Include="Model\User.cs" />
     <Compile Include="Model\Issue.cs" />
@@ -93,6 +94,7 @@
     </TypedJSON>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="wwwroot\GitHubImporter\style.css" />
     <Content Include="wwwroot\GitHubImporter\ViewModel\Master.html" />
     <Content Include="wwwroot\GitHubImporter\ViewModel\Report.html" />
   </ItemGroup>

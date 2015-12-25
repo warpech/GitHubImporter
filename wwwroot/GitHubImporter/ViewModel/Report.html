@@ -4,6 +4,12 @@
     <template is="dom-bind">
         <h2>{{model.Title}}</h2>
 
+        <fieldset>
+            <label><input type="checkbox" checked="{{model.Setup.Status.Open$::change}}"> Open</label>
+            <label><input type="checkbox" checked="{{model.Setup.Status.Closed$::change}}"> Closed</label>
+            <label><input type="checkbox" checked="{{model.Setup.Status.All$::change}}"> All</label>
+        </fieldset>
+
         <template is="dom-repeat" items="{{model.Items}}">
             <template is="dom-if" if="{{isFirst(index)}}">
                 <div><img class="githubimporter__avatar--big" src="{{item.AvatarUrl}}" /><a href="{{item.Url}}">{{item.Name}}</a> (<span>{{item.Count}}</span>)</div>

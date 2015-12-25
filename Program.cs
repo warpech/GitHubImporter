@@ -4,21 +4,10 @@ using Octokit;
 using Starcounter.Internal;
 using System.Threading.Tasks;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace GitHubImporter {
-    public class ReportInformation {
-        public string Name;
-        public string Url;
-        public string AvatarUrl;
-        public Int64 Count;
-    }
-
     class Program {
-
         static GitHubClient github;
-
-
         static string appName = StarcounterEnvironment.AppName;
 
         static void Main() {
@@ -30,104 +19,106 @@ namespace GitHubImporter {
                 };
 
                 var report = new Report() { };
-                report.Title = "Most active commenters";
+                report.Setup.Status.Changed += (object sender, EventArgs e) => {
+                    report.RefreshReport();
+                };
 
-                var users = Db.SQL<User>("SELECT u FROM User u");
-                List<ReportInformation> list = new List<ReportInformation>();
-                foreach (var user in users) {
-                    var count = Db.SQL<Int64>("SELECT COUNT(c) FROM Comment c WHERE c.Author = ?", user).First;
-                    if (count > 0) {
-                        var item = new ReportInformation();
-                        item.Name = user.Name;
-                        item.Url = user.Url;
-                        item.AvatarUrl = user.AvatarUrl;
-                        item.Count = count;
-                        list.Add(item);
-                    }
-                }
-
-                report.Items.Data = list.OrderByDescending(x => x.Count);
-
+                report.RefreshReport();
                 master.Report = report;
 
                 return master;
             });
 
-
+            CreateConfig();
             LoadStartData();
         }
 
-        static async void LoadStartData() {
+        static void CreateConfig() {
             Db.Transact(() => {
-                /*Db.SlowSQL("DELETE FROM GitHubImporter.Comment");
+                IssueEventType type = Db.SQL<IssueEventType>("SELECT t FROM IssueEventType t FETCH ?", 1).First;
+                if (type == null) {
+                    new IssueEventType() {
+                        Name = "Closed"
+                    };
+                    new IssueEventType() {
+                        Name = "Reopened"
+                    };
+                    new IssueEventType() {
+                        Name = "Subscribed"
+                    };
+                    new IssueEventType() {
+                        Name = "Merged"
+                    };
+                    new IssueEventType() {
+                        Name = "Referenced"
+                    };
+                    new IssueEventType() {
+                        Name = "Mentioned"
+                    };
+                    new IssueEventType() {
+                        Name = "Assigned"
+                    };
+                    new IssueEventType() {
+                        Name = "Unassigned"
+                    };
+                    new IssueEventType() {
+                        Name = "Labeled"
+                    };
+                    new IssueEventType() {
+                        Name = "Unlabeled"
+                    };
+                    new IssueEventType() {
+                        Name = "Milestoned"
+                    };
+                    new IssueEventType() {
+                        Name = "Demilestoned"
+                    };
+                    new IssueEventType() {
+                        Name = "Renamed"
+                    };
+                    new IssueEventType() {
+                        Name = "Locked"
+                    };
+                    new IssueEventType() {
+                        Name = "Unlocked"
+                    };
+                    new IssueEventType() {
+                        Name = "HeadRefDeleted"
+                    };
+                    new IssueEventType() {
+                        Name = "HeadRefRestored"
+                    };
+                    new IssueEventType() {
+                        Name = "Unsubscribed"
+                    };
+                }
+
+                IssueStatus status = Db.SQL<IssueStatus>("SELECT s FROM IssueStatus s FETCH ?", 1).First;
+                if (status == null) {
+                    new IssueStatus() {
+                        Name = "Open"
+                    };
+                    new IssueStatus() {
+                        Name = "Closed"
+                    };
+                }
+            });
+        }
+
+        static async void LoadStartData() {
+            /*Db.Transact(() => {
+                Db.SlowSQL("DELETE FROM GitHubImporter.Comment");
                 Db.SlowSQL("DELETE FROM GitHubImporter.Issue");
                 Db.SlowSQL("DELETE FROM GitHubImporter.IssueEvent");
-                Db.SlowSQL("DELETE FROM GitHubImporter.IssueEventType");
                 Db.SlowSQL("DELETE FROM GitHubImporter.Label");
                 Db.SlowSQL("DELETE FROM GitHubImporter.Repository");
-                Db.SlowSQL("DELETE FROM GitHubImporter.User");*/
-
-                new IssueEventType() {
-                    Name = "Closed"
-                };
-                new IssueEventType() {
-                    Name = "Reopened"
-                };
-                new IssueEventType() {
-                    Name = "Subscribed"
-                };
-                new IssueEventType() {
-                    Name = "Merged"
-                };
-                new IssueEventType() {
-                    Name = "Referenced"
-                };
-                new IssueEventType() {
-                    Name = "Mentioned"
-                };
-                new IssueEventType() {
-                    Name = "Assigned"
-                };
-                new IssueEventType() {
-                    Name = "Unassigned"
-                };
-                new IssueEventType() {
-                    Name = "Labeled"
-                };
-                new IssueEventType() {
-                    Name = "Unlabeled"
-                };
-                new IssueEventType() {
-                    Name = "Milestoned"
-                };
-                new IssueEventType() {
-                    Name = "Demilestoned"
-                };
-                new IssueEventType() {
-                    Name = "Renamed"
-                };
-                new IssueEventType() {
-                    Name = "Locked"
-                };
-                new IssueEventType() {
-                    Name = "Unlocked"
-                };
-                new IssueEventType() {
-                    Name = "HeadRefDeleted"
-                };
-                new IssueEventType() {
-                    Name = "HeadRefRestored"
-                };
-                new IssueEventType() {
-                    Name = "Unsubscribed"
-                };
-            });
+                Db.SlowSQL("DELETE FROM GitHubImporter.User");
+            });*/
 
             Console.WriteLine("Connecting to GH...");
             var tokenAuth = new Credentials("86d76bd01f7dca15036c0ed3b0c84e784727b554");
             github = new GitHubClient(new ProductHeaderValue("GitHubImporter"));
             github.Credentials = tokenAuth;
-
 
             User user = Helper.GetOrCreateUser("Starcounter", null, null);
             Repository repository = Helper.GetOrCreateRepository(user, "Starcounter");
