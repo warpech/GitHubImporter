@@ -1,0 +1,12 @@
+﻿<template>
+    <template is="dom-bind">
+        <h1>Settings</h1>
+
+        <div class="form-group">
+            <label class="control-label">Token</label>
+            <input type="text" value="{{model.Token.Token$::change}}" placeholder="Name" class="form-control">
+        </div>
+
+        <dom-bind-notifier path="model" observed-object="{{model}}" deep></dom-bind-notifier>
+    </template>
+</template>

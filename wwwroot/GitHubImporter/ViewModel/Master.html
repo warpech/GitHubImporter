@@ -2,7 +2,15 @@
     <template is="dom-bind">
         <h1><span>{{model.Owner.Name}}</span>/<span>{{model.Name}}</span></h1>
 
-        <starcounter-include partial="{{model.Report}}"></starcounter-include>
+        <a href="/GitHubImporter">Home</a> | <a href="/GitHubImporter/settings">Settings</a>
+
+        <template is="dom-if" if="{{model.TokenWarning}}">
+            <div class="alert alert-dismissible alert-danger">
+                <strong>Oh snap!</strong> You need a GitHub Token to use this app. Go to the <a href="/GitHubImporter/settings">Settings</a> page for instructions.
+            </div>
+        </template>
+
+        <starcounter-include partial="{{model.CurrentPage}}"></starcounter-include>
 
         <dom-bind-notifier path="model" observed-object="{{model}}" deep></dom-bind-notifier>
     </template>

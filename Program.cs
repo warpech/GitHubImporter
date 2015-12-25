@@ -13,10 +13,21 @@ namespace GitHubImporter {
         static void Main() {
             Console.WriteLine("Starting...");
 
-            Handle.GET("/githubimporter", () => {
+            Handle.GET("/githubimporter/master", () => {
+                Session session = Session.Current;
+
+                if (session != null && session.Data != null)
+                    return session.Data;
+
                 var master = new Master() {
                     Data = Db.SQL<Repository>("SELECT r FROM Repository r").First
                 };
+
+                return master;
+            });
+
+            Handle.GET("/githubimporter", () => {
+                var master = Self.GET<Master>("/githubimporter/master");
 
                 var report = new Report() { };
                 report.Setup.Status.Changed += (object sender, EventArgs e) => {
@@ -27,7 +38,21 @@ namespace GitHubImporter {
                 };
 
                 report.RefreshReport();
-                master.Report = report;
+                master.CurrentPage = report;
+
+                return master;
+            });
+
+            Handle.GET("/githubimporter/settings", () => {
+                var master = Self.GET<Master>("/githubimporter/master");
+
+                SettingsToken token = Db.SQL<SettingsToken>("SELECT s FROM SettingsToken s FETCH ?", 1).First;
+
+                master.CurrentPage = Db.Scope<Json>(() => {
+                    var settings = new Settings();
+                    settings.Token.Data = token;
+                    return settings;
+                });
 
                 return master;
             });
@@ -105,6 +130,11 @@ namespace GitHubImporter {
                         Name = "Closed"
                     };
                 }
+
+                SettingsToken token = Db.SQL<SettingsToken>("SELECT s FROM SettingsToken s FETCH ?", 1).First;
+                if (token == null) {
+                    new SettingsToken();
+                }
             });
         }
 
@@ -119,7 +149,17 @@ namespace GitHubImporter {
             });*/
 
             Console.WriteLine("Connecting to GH...");
-            var tokenAuth = new Credentials("86d76bd01f7dca15036c0ed3b0c84e784727b554");
+            SettingsToken token = Db.SQL<SettingsToken>("SELECT s FROM SettingsToken s FETCH ?", 1).First;
+            if (token == null) {
+                Console.WriteLine("GH token missing. Go to http://localhost:8080/githubimporter/settings");
+                return;
+            }
+            if (token.Token == null || token.Token == "") {
+                Console.WriteLine("GH token is empty. Go to http://localhost:8080/githubimporter/settings");
+                return;
+            }
+
+            var tokenAuth = new Credentials(token.Token);
             github = new GitHubClient(new ProductHeaderValue("GitHubImporter"));
             github.Credentials = tokenAuth;
 
