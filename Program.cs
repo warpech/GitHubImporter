@@ -58,6 +58,9 @@ namespace GitHubImporter {
                                 token.Limit = waiting.Result.Resources.Core.Limit;
                                 token.ResetAt = waiting.Result.Resources.Core.Reset.UtcDateTime;
                             });
+                            var settings = master.CurrentPage as Settings;
+                            settings.Token.IsLoading = false;
+                            master.Session.CalculatePatchAndPushOnWebSocket();
                         });
                     }, schedulerId);
                 });
@@ -65,6 +68,7 @@ namespace GitHubImporter {
                 master.CurrentPage = Db.Scope<Json>(() => {
                     var settings = new Settings();
                     settings.Token.Data = token;
+                    settings.Token.IsLoading = true;
                     return settings;
                 });
 

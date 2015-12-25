@@ -8,7 +8,13 @@
         </div>
 
         <div class="panel panel-default">
-            <div class="panel-heading">Rate limit</div>
+            <div class="panel-heading">Rate limit
+            
+                <template is="dom-if" if="{{model.Token.IsLoading}}" restamp>
+                    <span class="label label-success">Loading</span>
+                </template>
+            
+            </div>
             <div class="panel-body">
                 <table class="table table-striped table-hover ">
                     <tbody>

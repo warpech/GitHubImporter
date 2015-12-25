@@ -1,6 +1,7 @@
 {
     "Html": "/GitHubImporter/ViewModel/Settings.html",
     "Token": {
+        "IsLoading": false,
         "Token$": "",
         "Remaining": 0,
         "Limit": 0,
