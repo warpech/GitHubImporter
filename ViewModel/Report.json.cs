@@ -11,6 +11,19 @@ namespace GitHubImporter {
         public Int64 Count;
     }
 
+    public class WhereBuilder {
+        public string where = "";
+        public List<dynamic> whereParams = new List<dynamic>();
+         
+        public void Add(string addition, dynamic additionParam) {
+            if(where != "") {
+                where += "AND ";
+            }
+            where += addition + " ";
+            whereParams.Add(additionParam);
+        }
+    }
+
     partial class Report : Partial {
         public void RefreshReport() {
             if (Db.SQL("SELECT i FROM Starcounter.Metadata.\"Index\" i WHERE Name = ?", "GitHubImporterIssueStatus").First == null) {
@@ -32,15 +45,21 @@ namespace GitHubImporter {
             List<ReportInformation> list = new List<ReportInformation>();
             foreach (var user in users) {
                 Int64 count;
+                WhereBuilder whereBuilder = new WhereBuilder();
                 if (Setup.Status.Open) {
-                    count = Db.SQL<Int64>("SELECT COUNT(c) FROM Comment c WHERE c.Issue.Status = ? AND c.Author = ?", open, user).First;
+                    whereBuilder.Add("c.Issue.Status = ?", open);
                 }
                 else if (Setup.Status.Closed) {
-                    count = Db.SQL<Int64>("SELECT COUNT(c) FROM Comment c WHERE c.Issue.Status = ? AND c.Author = ?", closed, user).First;
+                    whereBuilder.Add("c.Issue.Status = ?", closed);
                 }
-                else {
-                    count = Db.SQL<Int64>("SELECT COUNT(c) FROM Comment c WHERE c.Author = ?", user).First;
+                if (Setup.Period.Last7Days) {
+                    whereBuilder.Add("c.CreatedAt >= ?", DateTime.Today.AddDays(-7));
                 }
+                else if (Setup.Period.ThisYear) {
+                    whereBuilder.Add("c.CreatedAt >= ?", new DateTime(DateTime.Today.Year, 1, 1));
+                }
+                whereBuilder.Add("c.Author = ?", user);
+                count = Db.SQL<Int64>("SELECT COUNT(c) FROM Comment c WHERE " + whereBuilder.where, whereBuilder.whereParams.ToArray()).First;
 
                 if (count > 0) {
                     var item = new ReportInformation();
@@ -81,9 +100,39 @@ namespace GitHubImporter {
             OnChanged();
         }
         void Handle(Input.All action) {
-            Closed = false;
             Open = false;
+            Closed = false;
             All = true;
+            OnChanged();
+        }
+    }
+
+    [Report_json.Setup.Period]
+    partial class ReportSetupPeriod : Partial {
+        public event EventHandler Changed;
+
+        protected void OnChanged() {
+            if (this.Changed != null) {
+                this.Changed(this, EventArgs.Empty);
+            }
+        }
+
+        void Handle(Input.Last7Days action) {
+            Last7Days = true;
+            ThisYear = false;
+            AllTime = false;
+            OnChanged();
+        }
+        void Handle(Input.ThisYear action) {
+            Last7Days = false;
+            ThisYear = true;
+            AllTime = false;
+            OnChanged();
+        }
+        void Handle(Input.AllTime action) {
+            Last7Days = false;
+            ThisYear = false;
+            AllTime = true;
             OnChanged();
         }
     }

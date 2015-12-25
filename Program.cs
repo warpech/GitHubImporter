@@ -22,6 +22,9 @@ namespace GitHubImporter {
                 report.Setup.Status.Changed += (object sender, EventArgs e) => {
                     report.RefreshReport();
                 };
+                report.Setup.Period.Changed += (object sender, EventArgs e) => {
+                    report.RefreshReport();
+                };
 
                 report.RefreshReport();
                 master.Report = report;

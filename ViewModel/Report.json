@@ -6,6 +6,11 @@
             "Open$": false,
             "Closed$": false,
             "All$": true
+        },
+        "Period": {
+            "Last7Days$": false,
+            "ThisYear$": false,
+            "AllTime$": true
         }
     },
     "Items": [

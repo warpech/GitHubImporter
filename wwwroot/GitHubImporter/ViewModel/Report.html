@@ -10,6 +10,12 @@
             <label><input type="checkbox" checked="{{model.Setup.Status.All$::change}}"> All</label>
         </fieldset>
 
+        <fieldset>
+            <label><input type="checkbox" checked="{{model.Setup.Period.Last7Days$::change}}"> Last 7 days</label>
+            <label><input type="checkbox" checked="{{model.Setup.Period.ThisYear$::change}}"> This year</label>
+            <label><input type="checkbox" checked="{{model.Setup.Period.AllTime$::change}}"> All time</label>
+        </fieldset>
+
         <template is="dom-repeat" items="{{model.Items}}">
             <template is="dom-if" if="{{isFirst(index)}}">
                 <div><img class="githubimporter__avatar--big" src="{{item.AvatarUrl}}" /><a href="{{item.Url}}">{{item.Name}}</a> (<span>{{item.Count}}</span>)</div>
