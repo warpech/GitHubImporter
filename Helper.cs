@@ -73,10 +73,10 @@ namespace GitHubImporter {
                     Type = type
                 };
                 if (eventInfo.Actor != null) {
-                    issueEvent.Actor = GetOrCreateUser(eventInfo.Actor.Login, eventInfo.Actor.Url.ToString(), eventInfo.Actor.AvatarUrl.ToString());
+                    issueEvent.Actor = GetOrCreateUser(eventInfo.Actor.Login, eventInfo.Actor.HtmlUrl.ToString(), eventInfo.Actor.AvatarUrl.ToString());
                 }
                 if (eventInfo.Assignee != null) {
-                    issueEvent.Assignee = GetOrCreateUser(eventInfo.Actor.Login, eventInfo.Actor.Url.ToString(), eventInfo.Actor.AvatarUrl.ToString());
+                    issueEvent.Assignee = GetOrCreateUser(eventInfo.Actor.Login, eventInfo.Actor.HtmlUrl.ToString(), eventInfo.Actor.AvatarUrl.ToString());
                 }
                 if (eventInfo.Label != null) {
                     issueEvent.Label = GetOrCreateLabel(issue.Repository, eventInfo.Label.Name, eventInfo.Label.Color);
@@ -95,7 +95,7 @@ namespace GitHubImporter {
                 comment = new Comment {
                     Issue = issue,
                     ExternalId = ghComment.Id,
-                    Author = GetOrCreateUser(ghComment.User.Login, ghComment.User.Url.ToString(), ghComment.User.AvatarUrl.ToString()),
+                    Author = GetOrCreateUser(ghComment.User.Login, ghComment.User.HtmlUrl.ToString(), ghComment.User.AvatarUrl.ToString()),
                     Body = ghComment.Body,
                     CreatedAt = ghComment.CreatedAt.UtcDateTime
                 };
