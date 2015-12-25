@@ -48,6 +48,20 @@ namespace GitHubImporter {
 
                 SettingsToken token = Db.SQL<SettingsToken>("SELECT s FROM SettingsToken s FETCH ?", 1).First;
 
+                byte schedulerId = StarcounterEnvironment.CurrentSchedulerId;
+                var waiting = GetRateLimit();
+                waiting.ContinueWith(a => {
+                    new DbSession().RunSync(() => {
+                        StarcounterEnvironment.RunWithinApplication(appName, () => {
+                            Db.Transact(() => {
+                                token.Remaining = waiting.Result.Resources.Core.Remaining;
+                                token.Limit = waiting.Result.Resources.Core.Limit;
+                                token.ResetAt = waiting.Result.Resources.Core.Reset.UtcDateTime;
+                            });
+                        });
+                    }, schedulerId);
+                });
+
                 master.CurrentPage = Db.Scope<Json>(() => {
                     var settings = new Settings();
                     settings.Token.Data = token;
@@ -282,6 +296,22 @@ namespace GitHubImporter {
                 });
             }
             return ghComments;
+        }
+
+        static async Task<Octokit.MiscellaneousRateLimit> GetRateLimit() {
+            Octokit.MiscellaneousRateLimit ghRateLimit = null;
+
+            try {
+                ghRateLimit = await github.Miscellaneous.GetRateLimits();
+
+            }
+            catch (Exception ex) {
+                StarcounterEnvironment.RunWithinApplication(appName, () => {
+                    Console.WriteLine("Exception caught: " + ex);
+                });
+            }
+
+            return ghRateLimit;
         }
 
         static async Task<IReadOnlyList<Octokit.Issue>> GetIssues(Repository repository) {

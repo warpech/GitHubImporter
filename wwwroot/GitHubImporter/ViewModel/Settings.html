@@ -7,6 +7,28 @@
             <input type="text" value="{{model.Token.Token$::change}}" placeholder="Name" class="form-control">
         </div>
 
+        <div class="panel panel-default">
+            <div class="panel-heading">Rate limit</div>
+            <div class="panel-body">
+                <table class="table table-striped table-hover ">
+                    <tbody>
+                        <tr>
+                            <td>Limit</td>
+                            <td>{{model.Token.Limit}}</td>
+                        </tr>
+                        <tr>
+                            <td>Remaining</td>
+                            <td>{{model.Token.Remaining}}</td>
+                        </tr>
+                        <tr>
+                            <td>Reset at</td>
+                            <td>{{model.Token.ResetAt}}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         <dom-bind-notifier path="model" observed-object="{{model}}" deep></dom-bind-notifier>
     </template>
 </template>
