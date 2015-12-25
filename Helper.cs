@@ -84,6 +84,12 @@ namespace GitHubImporter {
                 if (eventInfo.CommitId != null) {
                     issueEvent.CommitId = eventInfo.CommitId;
                 }
+                if (type.Name == "Closed") {
+                    issue.Status = Db.SQL<IssueStatus>("SELECT s FROM IssueStatus s WHERE s.Name = ? FETCH ?", "Closed", 1).First;
+                }
+                else if (type.Name == "Reopened") {
+                    issue.Status = Db.SQL<IssueStatus>("SELECT s FROM IssueStatus s WHERE s.Name = ? FETCH ?", "Open", 1).First;
+                }
             }
             return issueEvent;
         }
