@@ -1,13 +1,11 @@
 ﻿using System;
 using Starcounter;
-using Octokit;
 using Starcounter.Internal;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 
 namespace GitHubImporter {
     class Program {
-        static GitHubClient github;
         static string appName = StarcounterEnvironment.AppName;
 
         static void Main() {
@@ -47,28 +45,11 @@ namespace GitHubImporter {
                 var master = Self.GET<Master>("/githubimporter/master");
 
                 SettingsToken token = Db.SQL<SettingsToken>("SELECT s FROM SettingsToken s FETCH ?", 1).First;
-
-                byte schedulerId = StarcounterEnvironment.CurrentSchedulerId;
-                var waiting = GetRateLimit();
-                waiting.ContinueWith(a => {
-                    new DbSession().RunSync(() => {
-                        StarcounterEnvironment.RunWithinApplication(appName, () => {
-                            Db.Transact(() => {
-                                token.Remaining = waiting.Result.Resources.Core.Remaining;
-                                token.Limit = waiting.Result.Resources.Core.Limit;
-                                token.ResetAt = waiting.Result.Resources.Core.Reset.UtcDateTime;
-                            });
-                            var settings = master.CurrentPage as Settings;
-                            settings.Token.IsLoading = false;
-                            master.Session.CalculatePatchAndPushOnWebSocket();
-                        });
-                    }, schedulerId);
-                });
-
+                
                 master.CurrentPage = Db.Scope<Json>(() => {
                     var settings = new Settings();
                     settings.Token.Data = token;
-                    settings.Token.IsLoading = true;
+                    settings.Token.RefreshLimits();
                     return settings;
                 });
 
@@ -166,26 +147,11 @@ namespace GitHubImporter {
                 Db.SlowSQL("DELETE FROM GitHubImporter.User");
             });*/
 
-            Console.WriteLine("Connecting to GH...");
-            SettingsToken token = Db.SQL<SettingsToken>("SELECT s FROM SettingsToken s FETCH ?", 1).First;
-            if (token == null) {
-                Console.WriteLine("GH token missing. Go to http://localhost:8080/githubimporter/settings");
-                return;
-            }
-            if (token.Token == null || token.Token == "") {
-                Console.WriteLine("GH token is empty. Go to http://localhost:8080/githubimporter/settings");
-                return;
-            }
-
-            var tokenAuth = new Credentials(token.Token);
-            github = new GitHubClient(new ProductHeaderValue("GitHubImporter"));
-            github.Credentials = tokenAuth;
-
             User user = Helper.GetOrCreateUser("Starcounter", null, null);
             Repository repository = Helper.GetOrCreateRepository(user, "Starcounter");
 
             byte schedulerId = StarcounterEnvironment.CurrentSchedulerId;
-            //var ghIssues = await GetIssues(repository);
+            //var ghIssues = await GitHubApiHelper.GetIssues(repository);
             new DbSession().RunSync(() => {
                 StarcounterEnvironment.RunWithinApplication(appName, () => {
                     //SaveIssues(repository, ghIssues);
@@ -212,8 +178,7 @@ namespace GitHubImporter {
                         DateTime requestTime = DateTime.UtcNow;
 
                         Task.Run(async () => {
-                            var ghEvents = await GetEventInfos(ownerName, repositoryName, number);
-
+                            var ghEvents = await GitHubApiHelper.GetEventInfos(ownerName, repositoryName, number);
 
                             new DbSession().RunSync(() => {
                                 StarcounterEnvironment.RunWithinApplication(appName, () => {
@@ -248,7 +213,7 @@ namespace GitHubImporter {
                             DateTime requestTime = DateTime.UtcNow;
 
                             Task.Run(async () => {
-                                var ghComments = await GetComments(ownerName, repositoryName, number);
+                                var ghComments = await GitHubApiHelper.GetComments(ownerName, repositoryName, number);
 
                                 new DbSession().RunSync(() => {
                                     StarcounterEnvironment.RunWithinApplication(appName, () => {
@@ -274,68 +239,6 @@ namespace GitHubImporter {
                 });
             }, schedulerId);
             return true;
-        }
-
-        static async Task<IReadOnlyList<Octokit.EventInfo>> GetEventInfos(string ownerName, string repositoryName, int number) {
-            IReadOnlyList<Octokit.EventInfo> ghEvents = null;
-            try {
-                ghEvents = await github.Issue.Events.GetAllForIssue(ownerName, repositoryName, number);
-            }
-            catch (Exception ex) {
-                StarcounterEnvironment.RunWithinApplication(appName, () => {
-                    Console.WriteLine("Exception caught: " + ex);
-                });
-            }
-            return ghEvents;
-        }
-
-        static async Task<IReadOnlyList<Octokit.IssueComment>> GetComments(string ownerName, string repositoryName, int number) {
-            IReadOnlyList<Octokit.IssueComment> ghComments = null;
-            try {
-                ghComments = await github.Issue.Comment.GetAllForIssue(ownerName, repositoryName, number);
-            }
-            catch (Exception ex) {
-                StarcounterEnvironment.RunWithinApplication(appName, () => {
-                    Console.WriteLine("Exception caught: " + ex);
-                });
-            }
-            return ghComments;
-        }
-
-        static async Task<Octokit.MiscellaneousRateLimit> GetRateLimit() {
-            Octokit.MiscellaneousRateLimit ghRateLimit = null;
-
-            try {
-                ghRateLimit = await github.Miscellaneous.GetRateLimits();
-
-            }
-            catch (Exception ex) {
-                StarcounterEnvironment.RunWithinApplication(appName, () => {
-                    Console.WriteLine("Exception caught: " + ex);
-                });
-            }
-
-            return ghRateLimit;
-        }
-
-        static async Task<IReadOnlyList<Octokit.Issue>> GetIssues(Repository repository) {
-            IReadOnlyList<Octokit.Issue> ghIssues = null;
-
-            try {
-                var req = new RepositoryIssueRequest() {
-                    State = ItemState.All,
-                    SortDirection = SortDirection.Ascending
-                };
-                ghIssues = await github.Issue.GetAllForRepository(repository.Owner.Name, repository.Name, req);
-
-            }
-            catch (Exception ex) {
-                StarcounterEnvironment.RunWithinApplication(appName, () => {
-                    Console.WriteLine("Exception caught: " + ex);
-                });
-            }
-
-            return ghIssues;
         }
 
         static void SaveIssues(Repository repository, IReadOnlyList<Octokit.Issue> ghIssues) {
