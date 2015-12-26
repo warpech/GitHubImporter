@@ -151,10 +151,10 @@ namespace GitHubImporter {
             Repository repository = Helper.GetOrCreateRepository(user, "Starcounter");
 
             byte schedulerId = StarcounterEnvironment.CurrentSchedulerId;
-            //var ghIssues = await GitHubApiHelper.GetIssues(repository);
+            var ghIssues = await GitHubApiHelper.GetIssues(repository);
             new DbSession().RunSync(() => {
                 StarcounterEnvironment.RunWithinApplication(appName, () => {
-                    //SaveIssues(repository, ghIssues);
+                    SaveIssues(repository, ghIssues);
                     schedulerId = StarcounterEnvironment.CurrentSchedulerId;
                     Task.Run(async () => {
                         await UpdateNextIssueInfo(repository, schedulerId);
@@ -253,8 +253,9 @@ namespace GitHubImporter {
 
             var diffInDays = (DateTime.UtcNow - issue.EventsCheckedAt).TotalDays;
 
-            if (diffInDays > 5) {
-                return issue;
+            if (diffInDays > 365 * 10) {
+                //return issue;
+                return null;
             }
             else {
                 return null;
@@ -266,7 +267,7 @@ namespace GitHubImporter {
 
             var diffInDays = (DateTime.UtcNow - issue.CommentsCheckedAt).TotalDays;
 
-            if (diffInDays > 5) {
+            if (diffInDays > 365 * 10) {
                 return issue;
             }
             else {
