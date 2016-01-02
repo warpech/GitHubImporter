@@ -4,14 +4,30 @@
 
         <a href="/GitHubImporter">Home</a> | <a href="/GitHubImporter/settings">Settings</a>
 
-        <template is="dom-if" if="{{model.TokenWarning}}">
-            <div class="alert alert-dismissible alert-danger">
-                <strong>Oh snap!</strong> You need a GitHub Token to use this app. Go to the <a href="/GitHubImporter/settings">Settings</a> page for instructions.
-            </div>
+        <template is="dom-if" if="{{model.GitHubApiError}}" restamp>
+            <template is="dom-if" if="{{equals(model.GitHubApiError, 'TokenEmptyException')}}" restamp>
+                <div class="alert alert-dismissible alert-danger">
+                    <strong>GitHub API error.</strong> You need a GitHub Token to use this app. Go to the <a href="/GitHubImporter/settings">Settings</a> page for instructions.
+                </div>
+            </template>
+            <template is="dom-if" if="{{equals(model.GitHubApiError, 'AuthorizationException')}}" restamp>
+                <div class="alert alert-dismissible alert-danger">
+                    <strong>GitHub API error.</strong> The provided token is invalid.
+                </div>
+            </template>
         </template>
 
         <starcounter-include partial="{{model.CurrentPage}}"></starcounter-include>
 
         <dom-bind-notifier path="model" observed-object="{{model}}" deep></dom-bind-notifier>
     </template>
+    <script>
+        (function () {
+            var script = document._currentScript || document.currentScript;
+            var template = script.previousElementSibling;
+            template.equals = function (a, b) {
+                return (a == b);
+            };
+        })();
+    </script>
 </template>

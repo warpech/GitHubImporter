@@ -4,7 +4,7 @@
     "Owner": {
         "Name": ""
     },
-    "TokenWarning": false,
-    "$TokenWarning": {"Bind": "TokenWarningVisible"},
+    "GitHubApiError": "",
+    "$GitHubApiError": {"Bind": "GitHubApiErrorString"},
     "CurrentPage": { }
 }

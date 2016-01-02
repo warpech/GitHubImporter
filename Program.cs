@@ -7,6 +7,7 @@ using System.Collections.Generic;
 namespace GitHubImporter {
     class Program {
         static string appName = StarcounterEnvironment.AppName;
+        static GitHubApiHelper ghHelper;
 
         static void Main() {
             Console.WriteLine("Starting...");
@@ -18,7 +19,8 @@ namespace GitHubImporter {
                     return session.Data;
 
                 var master = new Master() {
-                    Data = Db.SQL<Repository>("SELECT r FROM Repository r").First
+                    Data = Db.SQL<Repository>("SELECT r FROM Repository r").First,
+                    ghHelper = ghHelper
                 };
 
                 return master;
@@ -48,6 +50,7 @@ namespace GitHubImporter {
                 
                 master.CurrentPage = Db.Scope<Json>(() => {
                     var settings = new Settings();
+                    settings.Token.ghHelper = master.ghHelper;
                     settings.Token.Data = token;
                     settings.Token.RefreshLimits();
                     return settings;
@@ -132,7 +135,9 @@ namespace GitHubImporter {
 
                 SettingsToken token = Db.SQL<SettingsToken>("SELECT s FROM SettingsToken s FETCH ?", 1).First;
                 if (token == null) {
-                    new SettingsToken();
+                    new SettingsToken() {
+                        Token = ""
+                    };
                 }
             });
         }
@@ -151,15 +156,25 @@ namespace GitHubImporter {
             Repository repository = Helper.GetOrCreateRepository(user, "Starcounter");
 
             byte schedulerId = StarcounterEnvironment.CurrentSchedulerId;
-            var ghIssues = await GitHubApiHelper.GetIssues(repository);
+
+            if (ghHelper == null) {
+                ghHelper = new GitHubApiHelper();
+            }
+
+            if (ghHelper.Client == null) {
+                return;
+            }
+
+            var ghIssues = await ghHelper.GetIssues(repository);
             new DbSession().RunSync(() => {
                 StarcounterEnvironment.RunWithinApplication(appName, () => {
-                    SaveIssues(repository, ghIssues);
-                    schedulerId = StarcounterEnvironment.CurrentSchedulerId;
-                    Task.Run(async () => {
-                        await UpdateNextIssueInfo(repository, schedulerId);
-                    });
-
+                    if (ghIssues != null) {
+                        SaveIssues(repository, ghIssues);
+                        schedulerId = StarcounterEnvironment.CurrentSchedulerId;
+                        Task.Run(async () => {
+                            await UpdateNextIssueInfo(repository, schedulerId);
+                        });
+                    }
                 });
             }, schedulerId);
         }
@@ -178,7 +193,7 @@ namespace GitHubImporter {
                         DateTime requestTime = DateTime.UtcNow;
 
                         Task.Run(async () => {
-                            var ghEvents = await GitHubApiHelper.GetEventInfos(ownerName, repositoryName, number);
+                            var ghEvents = await ghHelper.GetEventInfos(ownerName, repositoryName, number);
 
                             new DbSession().RunSync(() => {
                                 StarcounterEnvironment.RunWithinApplication(appName, () => {
@@ -213,7 +228,7 @@ namespace GitHubImporter {
                             DateTime requestTime = DateTime.UtcNow;
 
                             Task.Run(async () => {
-                                var ghComments = await GitHubApiHelper.GetComments(ownerName, repositoryName, number);
+                                var ghComments = await ghHelper.GetComments(ownerName, repositoryName, number);
 
                                 new DbSession().RunSync(() => {
                                     StarcounterEnvironment.RunWithinApplication(appName, () => {

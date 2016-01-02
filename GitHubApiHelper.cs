@@ -6,67 +6,70 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace GitHubImporter {
+    public class TokenEmptyException : Exception {
+
+    }
+
     public class GitHubApiHelper {
-        static GitHubClient github;
-        static string appName = StarcounterEnvironment.AppName;
+        public GitHubClient Client;
+        public Exception LastError;
+        private string AppName = StarcounterEnvironment.AppName;
 
-        private static void CreateClient() {
+        public GitHubApiHelper() {
             Console.WriteLine("Connecting to GH...");
-
-            SettingsToken token = Db.SQL<SettingsToken>("SELECT s FROM SettingsToken s FETCH ?", 1).First;
-            if (token == null) {
-                Console.WriteLine("GH token missing. Go to http://localhost:8080/githubimporter/settings");
-                return;
-            }
-            if (token.Token == null || token.Token == "") {
-                Console.WriteLine("GH token is empty. Go to http://localhost:8080/githubimporter/settings");
-                return;
-            }
-
-            var tokenAuth = new Credentials(token.Token);
-            github = new GitHubClient(new ProductHeaderValue("GitHubImporter"));
-            github.Credentials = tokenAuth;
+            CreateClient();
         }
 
-        public static async Task<IReadOnlyList<EventInfo>> GetEventInfos(string ownerName, string repositoryName, int number) {
-            if (github == null) {
-                CreateClient();
-            }
-
-            IReadOnlyList<EventInfo> ghEvents = null;
+        public void CreateClient() {
+            Client = null;
+            LastError = null;
             try {
-                ghEvents = await github.Issue.Events.GetAllForIssue(ownerName, repositoryName, number);
+                SettingsToken token = Db.SQL<SettingsToken>("SELECT s FROM SettingsToken s FETCH ?", 1).First;
+                if (token.Token == "") {
+                    Console.WriteLine("GH token is empty. Go to http://localhost:8080/githubimporter/settings");
+                    throw new TokenEmptyException();
+                }
+
+                var tokenAuth = new Credentials(token.Token);
+                Client = new GitHubClient(new ProductHeaderValue("GitHubImporter"));
+                Client.Credentials = tokenAuth;
             }
             catch (Exception ex) {
-                StarcounterEnvironment.RunWithinApplication(appName, () => {
+                LastError = ex;
+            }
+        }
+
+        public async Task<IReadOnlyList<EventInfo>> GetEventInfos(string ownerName, string repositoryName, int number) {
+            LastError = null;
+            IReadOnlyList<EventInfo> ghEvents = null;
+            try {
+                ghEvents = await Client.Issue.Events.GetAllForIssue(ownerName, repositoryName, number);
+            }
+            catch (Exception ex) {
+                LastError = ex;
+                StarcounterEnvironment.RunWithinApplication(AppName, () => {
                     Console.WriteLine("Exception caught: " + ex);
                 });
             }
             return ghEvents;
         }
 
-        public static async Task<IReadOnlyList<IssueComment>> GetComments(string ownerName, string repositoryName, int number) {
-            if (github == null) {
-                CreateClient();
-            }
-
+        public async Task<IReadOnlyList<IssueComment>> GetComments(string ownerName, string repositoryName, int number) {
             IReadOnlyList<IssueComment> ghComments = null;
             try {
-                ghComments = await github.Issue.Comment.GetAllForIssue(ownerName, repositoryName, number);
+                ghComments = await Client.Issue.Comment.GetAllForIssue(ownerName, repositoryName, number);
             }
             catch (Exception ex) {
-                StarcounterEnvironment.RunWithinApplication(appName, () => {
+                LastError = ex;
+                StarcounterEnvironment.RunWithinApplication(AppName, () => {
                     Console.WriteLine("Exception caught: " + ex);
                 });
             }
             return ghComments;
         }
 
-        public static async Task<IReadOnlyList<Octokit.Issue>> GetIssues(Repository repository) {
-            if (github == null) {
-                CreateClient();
-            }
-
+        public async Task<IReadOnlyList<Octokit.Issue>> GetIssues(Repository repository) {
+            LastError = null;
             IReadOnlyList<Octokit.Issue> ghIssues = null;
 
             try {
@@ -74,11 +77,12 @@ namespace GitHubImporter {
                     State = ItemState.All,
                     SortDirection = SortDirection.Ascending
                 };
-                ghIssues = await github.Issue.GetAllForRepository(repository.Owner.Name, repository.Name, req);
+                ghIssues = await Client.Issue.GetAllForRepository(repository.Owner.Name, repository.Name, req);
 
             }
             catch (Exception ex) {
-                StarcounterEnvironment.RunWithinApplication(appName, () => {
+                LastError = ex;
+                StarcounterEnvironment.RunWithinApplication(AppName, () => {
                     Console.WriteLine("Exception caught: " + ex);
                 });
             }
@@ -86,19 +90,17 @@ namespace GitHubImporter {
             return ghIssues;
         }
 
-        public static async Task<MiscellaneousRateLimit> GetRateLimit() {
-            if (github == null) {
-                CreateClient();
-            }
-
+        public async Task<MiscellaneousRateLimit> GetRateLimit() {
+            LastError = null;
             MiscellaneousRateLimit ghRateLimit = null;
 
             try {
-                ghRateLimit = await github.Miscellaneous.GetRateLimits();
+                ghRateLimit = await Client.Miscellaneous.GetRateLimits();
 
             }
             catch (Exception ex) {
-                StarcounterEnvironment.RunWithinApplication(appName, () => {
+                LastError = ex;
+                StarcounterEnvironment.RunWithinApplication(AppName, () => {
                     Console.WriteLine("Exception caught: " + ex);
                 });
             }

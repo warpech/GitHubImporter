@@ -2,11 +2,14 @@ using Starcounter;
 
 namespace GitHubImporter {
     partial class Master : Partial {
-        private SettingsToken Token = Db.SQL<SettingsToken>("SELECT s FROM SettingsToken s FETCH ?", 1).First;
+        public GitHubApiHelper ghHelper;
 
-        public bool TokenWarningVisible {
+        public string GitHubApiErrorString {
             get {
-                return (Token.Token == null || Token.Token == "");
+                if(ghHelper.LastError != null) {
+                    return ghHelper.LastError.GetType().Name;
+                }
+                return "";
             }
         }
     }
