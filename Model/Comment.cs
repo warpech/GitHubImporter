@@ -11,5 +11,7 @@ namespace GitHubImporter {
 
         public DateTime CreatedAt;
         public DateTime UpdatedAt;
+
+        public float Sentiment;
     }
 }

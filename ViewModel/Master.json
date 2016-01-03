@@ -4,6 +4,9 @@
     "Owner": {
         "Name": ""
     },
+    "Environment": {
+        "LastError": ""
+    },
     "GitHubApiError": "",
     "$GitHubApiError": {"Bind": "GitHubApiErrorString"},
     "CurrentPage": { }

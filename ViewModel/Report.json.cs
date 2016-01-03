@@ -1,3 +1,4 @@
+//using Deedle;
 using Starcounter;
 using System;
 using System.Collections.Generic;
@@ -74,6 +75,15 @@ namespace GitHubImporter {
             Title = "Most active commenters";
             Items.Clear();
             Items.Data = list.OrderByDescending(x => x.Count);
+
+
+            /*var comments = Db.SQL<Comment>("SELECT c FROM Comment c FETCH ?", 100);
+            var series = new SeriesBuilder<DateTime, string>();
+            foreach (var comment in comments) {
+                series.Add(comment.CreatedAt, comment.Author.Name);
+            }
+
+            series.Series.Print();*/
         }
     }
 

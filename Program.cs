@@ -3,14 +3,23 @@ using Starcounter;
 using Starcounter.Internal;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using edu.stanford.nlp.trees;
+using edu.stanford.nlp.sentiment;
+using System.Diagnostics;
+using CommonMark;
+using System.Linq;
+using System.Threading;
 
 namespace GitHubImporter {
     class Program {
         static string appName = StarcounterEnvironment.AppName;
         static GitHubApiHelper ghHelper;
+        static SentimentHelper sentimentHelper;
 
         static void Main() {
             Console.WriteLine("Starting...");
+
+            sentimentHelper = new SentimentHelper();
 
             Handle.GET("/githubimporter/master", () => {
                 Session session = Session.Current;
@@ -22,8 +31,15 @@ namespace GitHubImporter {
                     Data = Db.SQL<Repository>("SELECT r FROM Repository r").First,
                     ghHelper = ghHelper
                 };
+                master.Environment.Data = sentimentHelper;
 
                 return master;
+            });
+
+            Handle.GET("/githubimporter/sentiments", () => {
+                AnalyseSentiments();
+
+                return 200;
             });
 
             Handle.GET("/githubimporter", () => {
@@ -61,6 +77,49 @@ namespace GitHubImporter {
 
             CreateConfig();
             LoadStartData();
+            AnalyseSentiments();
+        }
+
+        static void AnalyseSentiments() {
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
+
+            //reset
+            /*var resetcomments = Db.SQL<Comment>("SELECT c FROM Comment c WHERE c.Sentiment > ? FETCH ?", 0, 1000);
+            foreach (var comment in resetcomments) {
+                Db.Transact(() => {
+                    comment.Sentiment = 0;
+                });
+            }
+            return;*/
+
+            //reset html
+            /*var resetcomments = Db.SQL<Comment>("SELECT c FROM Comment c FETCH ?", 15000);
+            var html2txt = new HtmlToText();
+            foreach (var comment in resetcomments) {
+                Db.Transact(() => {
+                    var html = CommonMarkConverter.Convert(comment.Body);
+                    var txt = html2txt.ConvertHtml(html);
+                    comment.BodyText = txt.Trim();
+                });
+            }*/
+
+            //var comments = Db.SQL<Comment>("SELECT c FROM Comment c WHERE c.Sentiment = ? AND c.ExternalId = ? FETCH ?", 0, 54903478, 1);
+            var comments = Db.SQL<Comment>("SELECT c FROM Comment c WHERE c.Sentiment = ? FETCH ?", 0, 15000);
+            var html2txt = new HtmlToText();
+
+            foreach (var comment in comments) {
+                var html = CommonMarkConverter.Convert(comment.Body);
+                var txt = html2txt.ConvertHtml(html);
+                var sentiment = sentimentHelper.Analyze(txt.Trim());
+
+                Db.Transact(() => {
+                    comment.Sentiment = sentiment;
+                });
+            }
+
+            stopwatch.Stop();
+            Console.WriteLine("Time elapsed: {0}", stopwatch.Elapsed);
         }
 
         static void CreateConfig() {

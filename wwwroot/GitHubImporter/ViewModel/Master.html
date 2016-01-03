@@ -17,6 +17,14 @@
             </template>
         </template>
 
+        <template is="dom-if" if="{{model.Environment.LastError}}" restamp>
+            <template is="dom-if" if="{{equals(model.Environment.LastError, 'StanfordNLPModelNotFoundExpection')}}" restamp>
+                <div class="alert alert-dismissible alert-danger">
+                    <strong>Stanford NLP model not found.</strong> Extract <code>stanford-corenlp-3.6.0-models.jar</code> to <code>stanford-corenlp-models</code>.
+                </div>
+            </template>
+        </template>
+
         <starcounter-include partial="{{model.CurrentPage}}"></starcounter-include>
 
         <dom-bind-notifier path="model" observed-object="{{model}}" deep></dom-bind-notifier>
