@@ -1,0 +1,20 @@
+﻿<template>
+    <template is="dom-bind">
+        <fieldset>
+            <label><input type="checkbox" checked="{{model.Status.Open$::change}}"> Open</label>
+            <label><input type="checkbox" checked="{{model.Status.Closed$::change}}"> Closed</label>
+            <label><input type="checkbox" checked="{{model.Status.All$::change}}"> All</label>
+        </fieldset>
+
+        <fieldset>
+            <label><input type="checkbox" checked="{{model.Period.Last7Days$::change}}"> Last 7 days</label>
+            <label><input type="checkbox" checked="{{model.Period.ThisMonth$::change}}"> This month</label>
+            <label><input type="checkbox" checked="{{model.Period.LastMonth$::change}}"> Last month</label>
+            <label><input type="checkbox" checked="{{model.Period.ThisYear$::change}}"> This year</label>
+            <label><input type="checkbox" checked="{{model.Period.LastYear$::change}}"> Last year</label>
+            <label><input type="checkbox" checked="{{model.Period.AllTime$::change}}"> All time</label>
+        </fieldset>
+
+        <dom-bind-notifier path="model" observed-object="{{model}}" deep></dom-bind-notifier>
+    </template>
+</template>

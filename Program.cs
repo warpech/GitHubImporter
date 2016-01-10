@@ -59,6 +59,23 @@ namespace GitHubImporter {
                 return master;
             });
 
+            Handle.GET("/githubimporter/comments", () => {
+                var master = Self.GET<Master>("/githubimporter/master");
+
+                var report = new CommentsList();
+                report.Setup.Status.Changed += (object sender, EventArgs e) => {
+                    report.RefreshReport();
+                };
+                report.Setup.Period.Changed += (object sender, EventArgs e) => {
+                    report.RefreshReport();
+                };
+
+                report.RefreshReport();
+                master.CurrentPage = report;
+
+                return master;
+            });
+
             Handle.GET("/githubimporter/settings", () => {
                 var master = Self.GET<Master>("/githubimporter/master");
 

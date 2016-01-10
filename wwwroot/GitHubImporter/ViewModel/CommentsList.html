@@ -1,0 +1,20 @@
+﻿<link rel="stylesheet" href="/GitHubImporter/style.css">
+
+<template>
+    <template is="dom-bind">
+        <h2>{{model.Title}}</h2>
+
+        <starcounter-include partial="{{model.Setup}}"></starcounter-include>
+
+        <p>Displaying <span>{{model.Results.length}}</span> results</p>
+
+        <template is="dom-repeat" items="{{model.Results}}" restamp>
+            <div>by <span>{{item.Author.Name}}</span> on <span>{{item.CreatedAt}}</span>
+            in <a href$="{{item.Issue.Url}}">{{item.Issue.Title}}</a></div>
+            <div></div>
+            <pre>{{item.Body}}</pre>
+        </template>
+
+        <dom-bind-notifier path="model" observed-object="{{model}}" deep></dom-bind-notifier>
+    </template>
+</template>

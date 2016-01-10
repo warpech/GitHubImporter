@@ -1,0 +1,20 @@
+{
+    "Html": "/GitHubImporter/ViewModel/CommentsList.html",
+    "Title": "",
+    "Setup": {
+        "$": { "Reuse": "ReportSetup" }
+    },
+    "Results": [
+        {
+            "Author": {
+                "Name": ""
+            },
+            "Issue": {
+                "Title": "",
+                "Url": ""
+            },
+            "Body": "",
+            "CreatedAt": ""
+        }
+    ]
+}

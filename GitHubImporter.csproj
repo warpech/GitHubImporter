@@ -228,12 +228,19 @@
     <Compile Include="Model\Repository.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="QueryBuilder.cs" />
     <Compile Include="SentimentHelper.cs" />
+    <Compile Include="ViewModel\CommentsList.json.cs">
+      <DependentUpon>CommentsList.json</DependentUpon>
+    </Compile>
     <Compile Include="ViewModel\Master.json.cs">
       <DependentUpon>Master.json</DependentUpon>
     </Compile>
     <Compile Include="ViewModel\Report.json.cs">
       <DependentUpon>Report.json</DependentUpon>
+    </Compile>
+    <Compile Include="ViewModel\ReportSetup.json.cs">
+      <DependentUpon>ReportSetup.json</DependentUpon>
     </Compile>
     <Compile Include="ViewModel\Settings.json.cs">
       <DependentUpon>Settings.json</DependentUpon>
@@ -241,6 +248,12 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+    <TypedJSON Include="ViewModel\ReportSetup.json">
+      <Generator>MsBuild:Compile</Generator>
+    </TypedJSON>
+    <TypedJSON Include="ViewModel\CommentsList.json">
+      <Generator>MsBuild:Compile</Generator>
+    </TypedJSON>
     <TypedJSON Include="ViewModel\Settings.json">
       <Generator>MsBuild:Compile</Generator>
     </TypedJSON>
@@ -253,8 +266,10 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="wwwroot\GitHubImporter\style.css" />
+    <Content Include="wwwroot\GitHubImporter\ViewModel\CommentsList.html" />
     <Content Include="wwwroot\GitHubImporter\ViewModel\Master.html" />
     <Content Include="wwwroot\GitHubImporter\ViewModel\Report.html" />
+    <Content Include="wwwroot\GitHubImporter\ViewModel\ReportSetup.html" />
     <Content Include="wwwroot\GitHubImporter\ViewModel\Settings.html" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

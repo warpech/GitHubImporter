@@ -4,17 +4,7 @@
     <template is="dom-bind">
         <h2>{{model.Title}}</h2>
 
-        <fieldset>
-            <label><input type="checkbox" checked="{{model.Setup.Status.Open$::change}}"> Open</label>
-            <label><input type="checkbox" checked="{{model.Setup.Status.Closed$::change}}"> Closed</label>
-            <label><input type="checkbox" checked="{{model.Setup.Status.All$::change}}"> All</label>
-        </fieldset>
-
-        <fieldset>
-            <label><input type="checkbox" checked="{{model.Setup.Period.Last7Days$::change}}"> Last 7 days</label>
-            <label><input type="checkbox" checked="{{model.Setup.Period.ThisYear$::change}}"> This year</label>
-            <label><input type="checkbox" checked="{{model.Setup.Period.AllTime$::change}}"> All time</label>
-        </fieldset>
+        <starcounter-include partial="{{model.Setup}}"></starcounter-include>
 
         <template is="dom-repeat" items="{{model.Items}}">
             <template is="dom-if" if="{{isFirst(index)}}">

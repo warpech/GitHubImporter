@@ -2,16 +2,7 @@
     "Html": "/GitHubImporter/ViewModel/Report.html",
     "Title": "",
     "Setup": {
-        "Status": {
-            "Open$": false,
-            "Closed$": false,
-            "All$": true
-        },
-        "Period": {
-            "Last7Days$": false,
-            "ThisYear$": false,
-            "AllTime$": true
-        }
+        "$": { "Reuse": "ReportSetup" }
     },
     "Items": [
         {

@@ -2,7 +2,9 @@
     <template is="dom-bind">
         <h1><span>{{model.Owner.Name}}</span>/<span>{{model.Name}}</span></h1>
 
-        <a href="/GitHubImporter">Home</a> | <a href="/GitHubImporter/settings">Settings</a>
+        <a href="/GitHubImporter">Home</a> |
+<a href="/GitHubImporter/comments">Comments</a> |
+<a href="/GitHubImporter/settings">Settings</a>
 
         <template is="dom-if" if="{{model.GitHubApiError}}" restamp>
             <template is="dom-if" if="{{equals(model.GitHubApiError, 'TokenEmptyException')}}" restamp>
