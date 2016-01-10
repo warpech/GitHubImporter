@@ -31,15 +31,42 @@ namespace GitHubImporter {
             return repository;
         }
 
-        public static Issue GetOrCreateIssue(Repository repository, int externalId) {
+        public static Issue UpdateOrCreateIssue(Repository repository, int externalId, string title, string body, string url, DateTimeOffset createdAt, DateTimeOffset? updatedAt, DateTimeOffset? closedAt) {
             //Console.WriteLine("GetOrCreateIssue " + externalId);
             Issue issue = Db.SQL<Issue>("SELECT i FROM GitHubImporter.Issue i WHERE i.Repository = ? AND i.ExternalId = ?", repository, externalId).First;
             if (issue == null) {
                 Db.Transact(() => {
                     issue = new Issue {
                         Repository = repository,
-                        ExternalId = externalId
+                        ExternalId = externalId,
+                        Title = title,
+                        Body = body,
+                        Url = url,
+                        CreatedAt = createdAt.UtcDateTime
                     };
+                    if (updatedAt.HasValue) {
+                        issue.UpdatedAt = updatedAt.Value.UtcDateTime;
+                    }
+                    if (closedAt.HasValue) {
+                        issue.ClosedAt = updatedAt.Value.UtcDateTime;
+                    }
+                });
+            }
+            else {
+                //update
+                Db.Transact(() => {
+                    issue.Repository = repository;
+                    issue.ExternalId = externalId;
+                    issue.Title = title;
+                    issue.Body = body;
+                    issue.Url = url;
+                    issue.CreatedAt = createdAt.UtcDateTime;
+                    if (updatedAt.HasValue) {
+                        issue.UpdatedAt = updatedAt.Value.UtcDateTime;
+                    }
+                    if (closedAt.HasValue) {
+                        issue.ClosedAt = updatedAt.Value.UtcDateTime;
+                    }
                 });
             }
             return issue;

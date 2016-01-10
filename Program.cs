@@ -330,7 +330,7 @@ namespace GitHubImporter {
         static void SaveIssues(Repository repository, IReadOnlyList<Octokit.Issue> ghIssues) {
             Console.WriteLine("Saving to so many issues: " + ghIssues.Count);
             foreach (var issue in ghIssues) {
-                Helper.GetOrCreateIssue(repository, issue.Number);
+                Helper.UpdateOrCreateIssue(repository, issue.Number, issue.Title, issue.Body, issue.HtmlUrl.ToString(), issue.CreatedAt, issue.UpdatedAt, issue.ClosedAt);
             }
         }
 
