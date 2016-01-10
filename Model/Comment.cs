@@ -13,5 +13,9 @@ namespace GitHubImporter {
         public DateTime UpdatedAt;
 
         public float Sentiment;
+
+        public Comment() {
+            Sentiment = -1;
+        }
     }
 }

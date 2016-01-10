@@ -84,42 +84,54 @@ namespace GitHubImporter {
             Stopwatch stopwatch = new Stopwatch();
             stopwatch.Start();
 
-            //reset
-            /*var resetcomments = Db.SQL<Comment>("SELECT c FROM Comment c WHERE c.Sentiment > ? FETCH ?", 0, 1000);
-            foreach (var comment in resetcomments) {
-                Db.Transact(() => {
-                    comment.Sentiment = 0;
-                });
-            }
-            return;*/
-
-            //reset html
-            /*var resetcomments = Db.SQL<Comment>("SELECT c FROM Comment c FETCH ?", 15000);
+            var comments = Db.SQL<Comment>("SELECT c FROM Comment c WHERE NOT c.Sentiment >= ? FETCH ?", 0, 15000);
             var html2txt = new HtmlToText();
-            foreach (var comment in resetcomments) {
-                Db.Transact(() => {
-                    var html = CommonMarkConverter.Convert(comment.Body);
-                    var txt = html2txt.ConvertHtml(html);
-                    comment.BodyText = txt.Trim();
-                });
-            }*/
-
-            //var comments = Db.SQL<Comment>("SELECT c FROM Comment c WHERE c.Sentiment = ? AND c.ExternalId = ? FETCH ?", 0, 54903478, 1);
-            var comments = Db.SQL<Comment>("SELECT c FROM Comment c WHERE c.Sentiment = ? FETCH ?", 0, 15000);
-            var html2txt = new HtmlToText();
+            byte schedulerId = StarcounterEnvironment.CurrentSchedulerId;
 
             foreach (var comment in comments) {
                 var html = CommonMarkConverter.Convert(comment.Body);
-                var txt = html2txt.ConvertHtml(html);
-                var sentiment = sentimentHelper.Analyze(txt.Trim());
-
-                Db.Transact(() => {
-                    comment.Sentiment = sentiment;
-                });
+                var txt = html2txt.ConvertHtml(html).Trim();
+                SentimentWorker swork = new SentimentWorker(comment.GetObjectNo(), txt, schedulerId);
+                ThreadPool.QueueUserWorkItem(swork.ThreadPoolCallback);
             }
 
             stopwatch.Stop();
             Console.WriteLine("Time elapsed: {0}", stopwatch.Elapsed);
+        }
+
+        private class SentimentWorker {
+            private ulong ObjectNo;
+            private string Text;
+            private byte SchedulerId;
+
+            public SentimentWorker(ulong objectNo, string text, byte schedulerId) {
+                ObjectNo = objectNo;
+                Text = text;
+                SchedulerId = schedulerId;
+            }
+
+            public void ThreadPoolCallback(Object threadContext) {
+                Stopwatch stopwatch = new Stopwatch();
+                stopwatch.Start();
+
+                StarcounterEnvironment.RunWithinApplication(appName, () => {
+                    Console.WriteLine("Thread callback " + ObjectNo + "..." + Text.Length);
+                });
+
+                var sentiment = sentimentHelper.Analyze(Text);
+
+                new DbSession().RunSync(() => {
+                    StarcounterEnvironment.RunWithinApplication(appName, () => {
+                        stopwatch.Stop();
+
+                        Console.WriteLine("Finnaly writing " + ObjectNo + " after (s) " + stopwatch.Elapsed.TotalSeconds);
+                        Comment comment = DbHelper.FromID(ObjectNo) as Comment;
+                        Db.Transact(() => {
+                            comment.Sentiment = sentiment;
+                        });
+                    });
+                }, SchedulerId);
+            }
         }
 
         static void CreateConfig() {
